@@ -18,15 +18,15 @@ if (!process.env.GOOGLE_SPREADSHEET_ID_FROM_URL)
 /*
  * ok real work
  *
- * GET /.netlify/functions/google-spreadsheet-fn
- * GET /.netlify/functions/google-spreadsheet-fn/1
- * PUT /.netlify/functions/google-spreadsheet-fn/1
- * POST /.netlify/functions/google-spreadsheet-fn
- * DELETE /.netlify/functions/google-spreadsheet-fn/1
+ * GET /.netlify/functions/sheets
+ * PUT /.netlify/functions/sheets
+ * POST /.netlify/functions/sheets
+ * DELETE /.netlify/functions/sheets
  *
  * the library also allows working just with cells,
  * but this example only shows CRUD on rows since thats more common
  */
+
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 
 exports.handler = async (event, context) => {
@@ -38,8 +38,8 @@ exports.handler = async (event, context) => {
     client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n')
   });
-  await doc.loadInfo(); // loads document properties and worksheets. required.
-  const sheet = doc.sheetsByIndex[0]; // you may want to customize this if you have more than 1 sheet
+  await doc.loadInfo(); // loads document properties and worksheets [required]
+  const sheet = doc.sheetsByIndex[0]; // customizable if you have more than 1 sheet
   // console.log('accessing', sheet.title, 'it has ', sheet.rowCount, ' rows');
   const path = event.path.replace(/\.netlify\/functions\/[^/]+/, '');
   const segments = path.split('/').filter((e) => e);
@@ -47,17 +47,16 @@ exports.handler = async (event, context) => {
   try {
     switch (event.httpMethod) {
       case 'GET':
-        /* GET /.netlify/functions/google-spreadsheet-fn */
+        /* GET /.netlify/functions/sheets */
         if (segments.length === 0) {
           const rows = await sheet.getRows(); // can pass in { limit, offset }
           const serializedRows = rows.map(serializeRow);
           return {
             statusCode: 200,
-            // body: JSON.stringify(rows) // dont do this - has circular references
-            body: JSON.stringify(serializedRows) // better
+            body: JSON.stringify(serializedRows)
           };
         }
-        /* GET /.netlify/functions/google-spreadsheet-fn/123456 */
+        /* GET /.netlify/functions/sheets/123456 */
         if (segments.length === 1) {
           const rowId = segments[0];
           const rows = await sheet.getRows(); // can pass in { limit, offset }
@@ -68,10 +67,10 @@ exports.handler = async (event, context) => {
           };
         } else {
           throw new Error(
-            'too many segments in GET request - you should only call somehting like /.netlify/functions/google-spreadsheet-fn/123456 not /.netlify/functions/google-spreadsheet-fn/123456/789/101112'
+            'too many segments in GET request - you should only call something like /.netlify/functions/sheets/123456 not /.netlify/functions/sheets/123456/789/101112'
           );
         }
-      /* POST /.netlify/functions/google-spreadsheet-fn */
+      /* POST /.netlify/functions/sheets */
       case 'POST':
         /* parse the string body into a useable JS object */
         const data = JSON.parse(event.body);
@@ -86,13 +85,13 @@ exports.handler = async (event, context) => {
             rowNumber: addedRow._rowNumber - 1 // minus the header row
           })
         };
-      /* PUT /.netlify/functions/google-spreadsheet-fn/123456 */
+      /* PUT /.netlify/functions/sheets/123456 */
       case 'PUT':
-        /* PUT /.netlify/functions/google-spreadsheet-fn */
+        /* PUT /.netlify/functions/sheets */
         if (segments.length === 0) {
-          console.error('PUT request must also have an id'); // we could allow mass-updating of the sheet, but nah
+          console.error('PUT request must also have an id'); // disallows mass-updating of the sheet
           return {
-            statusCode: 422, // unprocessable entity https://stackoverflow.com/questions/3050518/what-http-status-response-code-should-i-use-if-the-request-is-missing-a-required
+            statusCode: 422, // unprocessable entity
             body: 'PUT request must also have an id.'
           };
         }
@@ -120,7 +119,7 @@ exports.handler = async (event, context) => {
               'too many segments in PUT request - you should only call somehting like /.netlify/functions/google-spreadsheet-fn/123456 not /.netlify/functions/google-spreadsheet-fn/123456/789/101112'
           };
         }
-      /* DELETE /.netlify/functions/google-spreadsheet-fn/123456 */
+      /* DELETE /.netlify/functions/sheets/123456 */
       case 'DELETE':
         //
         // warning:
