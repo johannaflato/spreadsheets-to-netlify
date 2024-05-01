@@ -1,0 +1,4 @@
+# example netlify.toml
+[build]
+  functions = "functions" #  netlify-lambda reads this
+  publish = "public"
